@@ -1,0 +1,39 @@
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Wheels {
+  id    String   @id @default(uuid()) @db.Char(36)
+  count Int      @unique
+  vehicleTypes VehicleType[] 
+}
+
+model VehicleType {
+  id        String    @id @default(uuid()) @db.Char(36)
+  type      String
+  wheelsId  String
+  wheels    Wheels    @relation(fields: [wheelsId], references: [id]) 
+  vehicles  Vehicle[]
+}
+
+model Vehicle {
+  id              String      @id @default(uuid()) @db.Char(36)
+  name            String
+  vehicleTypeId   String
+  vehicleType     VehicleType @relation(fields: [vehicleTypeId], references: [id]) 
+  bookings        Booking[] 
+}
+
+model Booking {
+  id        String   @id @default(uuid()) @db.Char(36)
+  userName  String
+  vehicleId String
+  startDate DateTime
+  endDate   DateTime
+  vehicle   Vehicle  @relation(fields: [vehicleId], references: [id]) 
+}

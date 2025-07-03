@@ -1,16 +1,27 @@
-// controllers/vehicleController.js
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// Sample controller functions
+const getVehiclesByType = async (req, res) => {
+  const { vehicleTypeId } = req.params;
 
-exports.getAllVehicles = (req, res) => {
-  // For now, sending dummy data
-  res.json([
-    { id: 1, name: 'Car' },
-    { id: 2, name: 'Bike' }
-  ]);
+  try {
+    const vehicles = await prisma.vehicle.findMany({
+      where: {
+        vehicleTypeId: vehicleTypeId,
+      },
+      select: {
+        id: true,
+        name: true,
+      },
+    });
+
+    res.json(vehicles);
+  } catch (error) {
+    console.error('Error fetching vehicles:', error);
+    res.status(500).json({ error: 'Failed to fetch vehicles' });
+  }
 };
 
-exports.getVehicleById = (req, res) => {
-  const vehicleId = req.params.id;
-  res.json({ id: vehicleId, name: 'Sample Vehicle' });
+module.exports = {
+  getVehiclesByType,
 };
