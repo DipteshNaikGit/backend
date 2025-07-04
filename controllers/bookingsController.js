@@ -1,39 +1,68 @@
-const bookings = []; // Replace this with a real database or persistent storage
+const prisma = require('../prisma/client');
 
-const createBooking = (req, res) => {
-  const { vehicle, startDate, endDate } = req.body;
+const createBooking = async (req, res) => {
+  try {
+    const {
+      firstName,
+      lastName,
+      startDate,
+      endDate,
+      vehicle,
+    } = req.body;
 
-  if (!vehicle?.id || !startDate || !endDate) {
-    return res.status(400).json({ message: 'Missing vehicle ID, startDate, or endDate' });
-  }
+    if (!vehicle?.id || !startDate || !endDate || !firstName || !lastName) {
+      return res.status(400).json({ message: 'Missing required fields' });
+    }
 
-  const requestedStart = new Date(startDate);
-  const requestedEnd = new Date(endDate);
+    const start = new Date(startDate);
+    const end = new Date(endDate);
 
-  // Check if vehicle is already booked during this period
-  const conflictingBooking = bookings.find((booking) => {
-    return (
-      booking.vehicle.id === vehicle.id &&
-      new Date(booking.endDate) >= requestedStart &&
-      new Date(booking.startDate) <= requestedEnd
-    );
-  });
+    if (isNaN(start) || isNaN(end) || start > end) {
+      return res.status(400).json({ message: 'Invalid date range' });
+    }
 
-if (conflictingBooking) {
+    // Conflict check
+    const existingBooking = await prisma.booking.findFirst({
+      where: {
+        vehicleId: vehicle.id,
+        AND: [
+          { startDate: { lte: end } },
+          { endDate: { gte: start } },
+        ],
+      },
+      include: {
+        vehicle: true,
+      },
+    });
+
+   if (existingBooking) {
+  const formattedStart = new Date(existingBooking.startDate).toISOString().split('T')[0];
+  const formattedEnd = new Date(existingBooking.endDate).toISOString().split('T')[0];
+
   return res.status(409).json({
-    message: `Vehicle "${conflictingBooking.vehicle.name}" is already booked from ${conflictingBooking.startDate} to ${conflictingBooking.endDate}`,
+    message: `Vehicle "${existingBooking.vehicle.name}" is already booked from ${formattedStart} to ${formattedEnd}`,
   });
 }
 
-  // If not booked, add new booking
-  bookings.push({
-    vehicle,
-    startDate,
-    endDate,
-    user: req.body.firstName + ' ' + req.body.lastName, // Optional
-  });
+    // Create booking
+    const newBooking = await prisma.booking.create({
+      data: {
+        userName: `${firstName} ${lastName}`,
+        vehicleId: vehicle.id,
+        startDate: start,
+        endDate: end,
+      },
+    });
 
-  res.status(200).json({ message: 'Booking successful' });
+    return res.status(200).json({
+      message: 'Booking successful',
+      booking: newBooking,
+    });
+  } catch (error) {
+    console.error('Booking error:', error);
+    return res.status(500).json({ message: 'Internal server error' });
+  }
 };
+
 
 module.exports = { createBooking };
